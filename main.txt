@@ -1,0 +1,72 @@
+
+%					Generate
+
+{assign(X,Y): referee(Y,_,_,_,_)} = 1 :- case(X,_,_,_,_,_).
+
+
+
+%				Hard Constraints
+
+% Damage Threshold
+:- assign(X,Y), case(X,_,_,D,_,_), referee(Y,T,_,_,_), externalMaxDamage(M), D>M, T==e.
+
+% Region Preference
+:- assign(X,Y), case(X,_,_,_,R,_), prefRegion(Y, R, 0).
+
+% Type Preference
+:- assign(X,Y), case(X,T,_,_,_,_), prefType(Y, T, 0).
+
+% Workload Limit
+:- referee(Y,_,M,_,_), M < #sum{E: assign(X,Y), case(X,_,E,_,_,_), referee(Y,_,M,_,_)}.
+%tot(N,Y) :- referee(Y,_,_,_,_), N = #sum{E: assign(X,Y), case(X,_,E,_,_,_), referee(Y,_,_,_,_)}.
+
+
+
+%				Weak Constraints
+
+% Minimize sum of payments
+:~ assign(X,Y),case(X,_,_,_,_,P), referee(Y,e,_,_,_). [P*16]
+costA(N) :- N = #sum{P*16,X,Y: assign(X,Y),case(X,_,_,_,_,P), referee(Y,e,_,_,_)}.
+
+
+extRefN(N) :- N = #count{1,Y: referee(Y,e,_,_,_)}.
+refN(N) :- N = #count{1,Y: referee(Y,_,_,_,_)}.
+avgB(N) :- N = #sum{P/Z, Y: referee(Y,e,_,_,P), extRefN(Z)}.
+avgC(N) :- N = #sum{P/Z, Y: referee(Y,_,_,P,_), refN(Z)}.
+
+
+% Balance overall Payment to external referees
+overPay(Y,N) :- referee(Y,e,_,_,P), T=#sum{C,X: assign(X,Y), case(X,_,_,_,_,C)}, N=T+P.
+overPay(Y,P) :- referee(Y,e,_,_,P), not assign(_,Y).
+costB(N) :- N = #sum{|A-P|*7,Y: overPay(Y,P), avgB(A)}.
+#minimize{N: costB(N)}.
+
+% Balance overall workload
+overWork(Y,N) :- referee(Y,_,_,P,_), T=#sum{E,X: assign(X,Y), case(X,_,E,_,_,_)}, N=T+P.
+overWork(Y,W) :- referee(Y,_,_,W,_), not assign(_,Y).
+costC(N) :- N = #sum{|A-W|*9,Y: overWork(Y,W), avgC(A)}.
+#minimize{N: costC(N)}.
+
+% Assign cases to higher Type Preference
+:~ assign(X,Y), case(X,T,_,_,_,_), prefType(Y,T,P). [(3-P)*34]
+costD(N) :- N = #sum{(3-P)*34,X,Y: assign(X,Y), case(X,T,_,_,_,_), prefType(Y,T,P)}.
+
+% Assign cases to higher Region Preference
+:~ assign(X,Y), case(X,_,_,_,R,_), prefRegion(Y,R,P). [(3-P)*34]
+costE(A) :- A = #sum{(3-P)*34,X,Y: assign(X,Y), case(X,_,_,_,R,_), prefRegion(Y,R,P)}.
+
+
+
+
+
+#show assign/2.
+%#show tot/2.
+%#show costA/1.
+%#show extRefN/1.
+%#show avgB/1.
+%#show avgC/1.
+%#show costB/1.
+%#show costC/1.
+%#show costD/1.
+%#show costE/1.
+%#show overWork/2.
